@@ -48,6 +48,143 @@ export default class FourInARowGame {
         }
     }
 
+    /**
+     *
+     * options: {
+     *     startRowIndex,
+     *     startColumnIndex,
+     *     rowCountStep,
+     *     columnCountStep
+     * }
+     *
+     * Any missing options will be 0 by default.
+     */
+    static tryFindWinLine(board, options) {
+        // If `options` is null/undefined, set it's value to an empty object.
+        options = options || {};
+
+        let config = {
+            startRowIndex: options.startRowIndex || 0,
+            startColumnIndex: options.startColumnIndex || 0,
+            rowCountStep: options.rowCountStep || 0,
+            columnCountStep: options.columnCountStep || 0
+        };
+
+        let count = 0;
+        let tokenToCheck = Constants.BoardToken.NONE;
+        let winLine = [];
+
+        for (let i = 0; i < Constants.BoardDimensions.WIN_LINE_LENGTH; i++) {
+            let row = config.startRowIndex + config.rowCountStep * i;
+            let column = config.startColumnIndex + config.columnCountStep * i;
+
+            if (FourInARowGame.checkIfOutOfBounds(row, column)) {
+                break;
+            }
+
+            let currentToken = board[row][column];
+            if (currentToken === Constants.BoardToken.NONE) {
+                break;
+            }
+
+            if (tokenToCheck === Constants.BoardToken.NONE) {
+                tokenToCheck = currentToken;
+            }
+
+            if (currentToken === tokenToCheck) {
+                count++;
+            }
+
+            winLine.push({ row: row, column: column });
+        }
+
+        if (count === Constants.BoardDimensions.WIN_LINE_LENGTH) {
+            return {
+                winLine: winLine,
+                winner: FourInARowGame.boardTokenToPlayerColor(tokenToCheck),
+            };
+        }
+
+        return {
+            winLine: []
+        };
+    }
+
+    static checkIfOutOfBounds(row, column) {
+        return row < 0
+            || row > Constants.BoardDimensions.ROWS
+            || column < 0
+            || column > Constants.BoardDimensions.COLUMNS;
+    }
+
+    static boardTokenToPlayerColor(boardToken) {
+        switch (boardToken) {
+            case Constants.BoardToken.YELLOW:
+                return Constants.PlayerColor.YELLOW;
+            case Constants.BoardToken.RED:
+                return Constants.PlayerColor.RED;
+            default:
+                return Constants.PlayerColor.NONE;
+        }
+    }
+
+    // Each win line is an array of board position coordinates:
+    // e.g: winLine = [{row: 0, column: 0}, {row: 0, column: 1}, {row: 0, column : 2}, {row: 0, column: 3}]
+    static checkForWin(board) {
+        // Starts from bottom left of the board and ends on top right of board
+        for (let columnIndex = 0; columnIndex < Constants.BoardDimensions.COLUMNS; columnIndex++) {
+            for (let rowIndex = Constants.BoardDimensions.ROWS - 1; rowIndex > -1; rowIndex--) {
+                // Check for vertical win
+                let verticalWinCheckResult = FourInARowGame.tryFindWinLine(board, {
+                    startRowIndex: rowIndex,
+                    startColumnIndex: columnIndex,
+                    rowCountStep: -1,
+                });
+
+                if (verticalWinCheckResult.winner) {
+                    return verticalWinCheckResult;
+                }
+
+                let horizontalWinCheckResult = FourInARowGame.tryFindWinLine(board, {
+                    startRowIndex: rowIndex,
+                    startColumnIndex: columnIndex,
+                    columnCountStep: -1,
+                });
+
+                if (horizontalWinCheckResult.winner) {
+                    return horizontalWinCheckResult;
+                }
+
+                let leftDiagonalWinCheck = FourInARowGame.tryFindWinLine(board, {
+                    startRowIndex: rowIndex,
+                    startColumnIndex: columnIndex,
+                    rowCountStep: -1,
+                    columnCountStep: -1
+                });
+
+                if (leftDiagonalWinCheck.winner) {
+                    return leftDiagonalWinCheck;
+                }
+
+                let rightDiagonalWinCheck = FourInARowGame.tryFindWinLine(board, {
+                    startRowIndex: rowIndex,
+                    startColumnIndex: columnIndex,
+                    rowCountStep: -1,
+                    columnCountStep: 1
+                });
+
+                if (rightDiagonalWinCheck.winner) {
+                    return rightDiagonalWinCheck;
+                }
+            }
+        }
+
+        return {
+            winLine: [],
+            winner: Constants.PlayerColor.NONE
+        };
+    }
+
 
     playMove(columnIndex) {
         switch (this.status) {
@@ -59,9 +196,7 @@ export default class FourInARowGame {
                 // The game is over at this point so
                 // re-evaluate the latest board, returning the same game status
                 // and board details.
-
-                // TODO: Implement this properly
-                console.log("Game already ended in win or draw. re-evaluating latest game state");
+                return this.evaluateGame(this.currentBoard);
             default:
                 break;
         }
@@ -73,7 +208,6 @@ export default class FourInARowGame {
 
         return moveResults;
     }
-
 
     performMove(columnIndex) {
         let nextBoard = FourInARowGame.deepBoardCopy(this.currentBoard);
@@ -126,7 +260,21 @@ export default class FourInARowGame {
     }
 
     evaluateGame(board) {
-        // From this point, you can assume that a successful move was made and the game will
+        let winCheckResult = FourInARowGame.checkForWin(board);
+
+        if (winCheckResult.winner !== Constants.PlayerColor.NONE) {
+            this.status = Constants.GameStatus.WIN;
+            return {
+                board: board,
+                winner: winCheckResult.winner,
+                status: {
+                    value: Constants.MoveStatus.WIN
+                },
+                winLine: winCheckResult.winLine
+            };
+        }
+
+        // From this point, we can assume that a successful move was made and the game will
         // continue on.
         return {
             board: board,
@@ -137,4 +285,5 @@ export default class FourInARowGame {
             winLine: []
         };
     }
+
 }
