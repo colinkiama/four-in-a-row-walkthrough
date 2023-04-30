@@ -185,6 +185,19 @@ export default class FourInARowGame {
         };
     }
 
+    static checkForFilledBoard(board) {
+        for (let j = 0; j < board.length; j++) {
+            let boardColumn = board[j];
+            for (let i = 0; i < boardColumn.length; i++) {
+                let boardPosition = boardColumn[i];
+                if (boardPosition === Constants.BoardToken.NONE) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 
     playMove(columnIndex) {
         switch (this.status) {
@@ -202,9 +215,13 @@ export default class FourInARowGame {
         }
 
         let moveResults = this.performMove(columnIndex);
-        this.currentTurn = this.currentTurn === Constants.PlayerColor.YELLOW
-            ? Constants.PlayerColor.RED
-            : Constants.PlayerColor.YELLOW;
+
+        // Do not change player turn if move is invalid
+        if (moveResults.status !== Constants.MoveStatus.INVALID && moveResults.status.value !== Constants.MoveStatus.INVALID) {
+            this.currentTurn = this.currentTurn === Constants.PlayerColor.YELLOW
+                ? Constants.PlayerColor.RED
+                : Constants.PlayerColor.YELLOW;
+        }
 
         return moveResults;
     }
@@ -268,9 +285,24 @@ export default class FourInARowGame {
                 board: board,
                 winner: winCheckResult.winner,
                 status: {
-                    value: Constants.MoveStatus.WIN
+                    value: Constants.MoveStatus.WIN,
                 },
-                winLine: winCheckResult.winLine
+                winLine: winCheckResult.winLine,
+            };
+        }
+
+        // If board is full right now, we can assume the game to be a draw
+        // since there weren't any winning lines detected.
+        if (FourInARowGame.checkForFilledBoard(board)) {
+            this.status = Constants.GameStatus.DRAW;
+
+            return {
+                board: board,
+                winner: Constants.PlayerColor.NONE,
+                status: {
+                    value: Constants.MoveStatus.DRAW,
+                },
+                winLine: [],
             };
         }
 
@@ -280,10 +312,9 @@ export default class FourInARowGame {
             board: board,
             winner: Constants.PlayerColor.NONE,
             status: {
-                value: Constants.MoveStatus.SUCCESS
+                value: Constants.MoveStatus.SUCCESS,
             },
-            winLine: []
+            winLine: [],
         };
     }
-
 }
