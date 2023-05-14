@@ -1,3 +1,3 @@
-import FourInARowGame from "./FourInARowGame.js";
+import { FourInARowGame } from "./gameLogic/index.js";
 
 window.fourInARowGame = new FourInARowGame();
